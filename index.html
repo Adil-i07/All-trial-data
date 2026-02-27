@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GitHub Issues Viewer</title>
+    <style>
+        body { font-family: sans-serif; line-height: 1.6; padding: 20px; background-color: #f6f8fa; }
+        h1 { color: #24292e; border-bottom: 2px solid #eaecef; padding-bottom: 10px; }
+        #issues-list { list-style: none; padding: 0; }
+        .issue-card { 
+            background: white; border: 1px solid #d1d5da; 
+            border-radius: 6px; padding: 15px; margin-bottom: 10px;
+            transition: transform 0.2s;
+        }
+        .issue-card:hover { border-color: #0366d6; transform: translateY(-2px); }
+        .issue-title { font-weight: bold; color: #0366d6; text-decoration: none; font-size: 1.2rem; }
+        .issue-meta { font-size: 0.85rem; color: #586069; margin-top: 5px; }
+        .tag { 
+            display: inline-block; padding: 2px 8px; border-radius: 10px; 
+            font-size: 12px; margin-right: 5px; color: white;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>📋 All Issues from Repository</h1>
+    <div id="loading">กำลังโหลดข้อมูล...</div>
+    <ul id="issues-list"></ul>
+
+    <script>
+        // --- ⚠️ แก้ไขตรงนี้ ⚠️ ---
+        const REPO_OWNER = 'ชื่อUSERของคุณ'; 
+        const REPO_NAME = 'ชื่อREPOของคุณ';
+        // -----------------------
+
+        const GITHUB_API_URL = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/issues?state=all`;
+
+        async function fetchIssues() {
+            try {
+                const response = await fetch(GITHUB_API_URL);
+                if (!response.ok) throw new Error('ดึงข้อมูลไม่สำเร็จ');
+                
+                const issues = await response.json();
+                const listElement = document.getElementById('issues-list');
+                const loadingElement = document.getElementById('loading');
+
+                loadingElement.style.display = 'none';
+
+                issues.forEach(issue => {
+                    // กรองเฉพาะ Issue จริงๆ (ไม่เอา Pull Requests)
+                    if (!issue.pull_request) {
+                        const li = document.createElement('li');
+                        li.className = 'issue-card';
+                        
+                        // สร้าง Labels HTML
+                        const labelsHtml = issue.labels.map(label => 
+                            `<span class="tag" style="background-color: #${label.color}">${label.name}</span>`
+                        ).join('');
+
+                        li.innerHTML = `
+                            <a href="${issue.html_url}" target="_blank" class="issue-title">#${issue.number} - ${issue.title}</a>
+                            <div class="issue-meta">
+                                สถานะ: <strong>${issue.state}</strong> | 
+                                โดย: ${issue.user.login} | 
+                                เมื่อ: ${new Date(issue.created_at).toLocaleDateString('th-TH')}
+                            </div>
+                            <div style="margin-top:10px;">${labelsHtml}</div>
+                        `;
+                        listElement.appendChild(li);
+                    }
+                });
+            } catch (error) {
+                console.error(error);
+                document.getElementById('loading').innerText = 'เกิดข้อผิดพลาดในการโหลดข้อมูล (ตรวจสอบชื่อ User/Repo หรือ Rate Limit)';
+            }
+        }
+
+        fetchIssues();
+    </script>
+</body>
+</html>
