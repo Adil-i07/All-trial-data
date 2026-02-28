@@ -3,80 +3,367 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GitHub Issues Viewer</title>
+    <title>MBTI Pro - Premium Edition</title>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    
     <style>
-        body { font-family: sans-serif; line-height: 1.6; padding: 20px; background-color: #f6f8fa; }
-        h1 { color: #24292e; border-bottom: 2px solid #eaecef; padding-bottom: 10px; }
-        #issues-list { list-style: none; padding: 0; }
-        .issue-card { 
-            background: white; border: 1px solid #d1d5da; 
-            border-radius: 6px; padding: 15px; margin-bottom: 10px;
-            transition: transform 0.2s;
+        :root {
+            --primary-orange: #ff7e5f;
+            --primary-green: #2ecc71;
+            --dark: #1e272e;
+            --light-bg: #f8f9fa;
+            --glass: rgba(255, 255, 255, 0.9);
+            --skeleton: #efefef;
         }
-        .issue-card:hover { border-color: #0366d6; transform: translateY(-2px); }
-        .issue-title { font-weight: bold; color: #0366d6; text-decoration: none; font-size: 1.2rem; }
-        .issue-meta { font-size: 0.85rem; color: #586069; margin-top: 5px; }
-        .tag { 
-            display: inline-block; padding: 2px 8px; border-radius: 10px; 
-            font-size: 12px; margin-right: 5px; color: white;
+
+        * { box-sizing: border-box; }
+        body { 
+            font-family: 'Prompt', sans-serif; 
+            background: var(--light-bg);
+            margin: 0; padding: 0;
+            overflow-x: hidden;
         }
+
+        /* 1. Top Loading Bar */
+        #top-loader {
+            position: fixed; top: 0; left: 0; height: 4px;
+            width: 0%; z-index: 9999;
+            background: linear-gradient(to right, var(--primary-orange), var(--primary-green));
+            transition: width 0.4s ease;
+        }
+
+        /* 2. Skeleton Loader (แบบในรูปที่ส่งมา) */
+        .skeleton-wrapper { padding: 20px; }
+        .sk-header { display: flex; gap: 10px; justify-content: center; margin-bottom: 20px; }
+        .sk-item { background: var(--skeleton); border-radius: 15px; animation: pulse 1.5s infinite; }
+        .sk-btn { width: 100px; height: 30px; }
+        .sk-banner { width: 100%; height: 60px; margin-bottom: 40px; border-radius: 15px; }
+        .sk-row { display: flex; justify-content: space-between; margin-bottom: 20px; }
+        .sk-circle { width: 50px; height: 50px; border-radius: 50%; }
+        .sk-line { width: 50px; height: 8px; margin: 10px auto; border-radius: 4px; }
+
+        @keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
+
+        /* General Layout */
+        .container { max-width: 800px; margin: 40px auto; padding: 20px; }
+        .card { background: white; padding: 40px; border-radius: 30px; box-shadow: 0 10px 40px rgba(0,0,0,0.05); min-height: 400px; }
+
+        /* Sidebar Glass UI */
+        #status-sidebar {
+            position: fixed; top: 20px; right: 20px; width: 180px; 
+            background: var(--glass); backdrop-filter: blur(10px);
+            padding: 15px; border-radius: 20px; box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); z-index: 1000;
+        }
+        #status-sidebar.collapsed { width: 60px; height: 60px; border-radius: 50%; padding: 5px; overflow: hidden; }
+        .toggle-btn { cursor: pointer; display: flex; justify-content: center; width: 100%; margin-bottom: 10px; }
+        #status-sidebar.collapsed .toggle-btn { height: 100%; align-items: center; margin: 0; }
+        .status-content { transition: 0.3s; }
+        #status-sidebar.collapsed .status-content { display: none; }
+
+        .status-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; max-height: 250px; overflow-y: auto; }
+        .dot { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; background: #eee; border-radius: 8px; cursor: pointer; font-size: 11px; }
+        .dot.active { background: var(--primary-green); color: white; }
+        .dot.missing { border: 2px solid var(--primary-orange); color: var(--primary-orange); }
+
+        /* Question Blocks */
+        .question-block { margin-bottom: 40px; padding-bottom: 20px; border-bottom: 1px solid #f0f0f0; }
+        .options { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; }
+        .radio-circle { appearance: none; border: 2.5px solid #ddd; border-radius: 50%; cursor: pointer; transition: 0.2s; }
+        .radio-circle:checked { background: var(--dark); border-color: var(--dark); transform: scale(1.2); }
+        .size-3 { width: 40px; height: 40px; } .size-2 { width: 32px; height: 32px; } .size-1 { width: 24px; height: 24px; } .size-0 { width: 18px; height: 18px; background: #eee; }
+
+        .btn { padding: 12px 25px; border-radius: 15px; border: none; cursor: pointer; font-weight: 600; width: 100%; transition: 0.3s; margin-top: 10px; }
+        .btn-orange { background: var(--primary-orange); color: white; }
+        .btn-green { background: var(--primary-green); color: white; }
+        .hidden { display: none; }
+        .fade-in { animation: fadeIn 0.5s ease; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     </style>
 </head>
 <body>
 
-    <h1>📋 All Issues from Repository</h1>
-    <div id="loading">กำลังโหลดข้อมูล...</div>
-    <ul id="issues-list"></ul>
+<div id="top-loader"></div>
 
-    <script>
-        // --- ⚠️ แก้ไขตรงนี้ ⚠️ ---
-        const REPO_OWNER = 'ชื่อUSERของคุณ'; 
-        const REPO_NAME = 'ชื่อREPOของคุณ';
-        // -----------------------
+<div id="status-sidebar" class="hidden">
+    <div class="toggle-btn" onclick="toggleSidebar()"><span class="material-icons" id="toggle-icon">assessment</span></div>
+    <div class="status-content">
+        <small>PROGRESS</small>
+        <div class="status-grid" id="status-grid"></div>
+        <button class="btn btn-orange" style="border-radius:50%; width:50px; height:50px; margin: 15px auto 0; display:flex; align-items:center; justify-content:center;" onclick="checkSubmit()">
+            <span class="material-icons">send</span>
+        </button>
+    </div>
+</div>
 
-        const GITHUB_API_URL = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/issues?state=all`;
+<div class="container fade-in">
+    <div id="loading-screen" class="card hidden">
+        <div class="skeleton-wrapper">
+            <div class="sk-header">
+                <div class="sk-item sk-btn"></div><div class="sk-item sk-btn"></div><div class="sk-item sk-btn"></div>
+            </div>
+            <div class="sk-item sk-banner"></div>
+            <div class="sk-row">
+                <div class="sk-item sk-circle"></div><div class="sk-item sk-circle"></div><div class="sk-item sk-circle"></div><div class="sk-item sk-circle"></div><div class="sk-item sk-circle"></div>
+            </div>
+            <div class="sk-row" style="justify-content: space-around;">
+                <div class="sk-item sk-line"></div><div class="sk-item sk-line"></div><div class="sk-item sk-line"></div><div class="sk-item sk-line"></div><div class="sk-item sk-line"></div>
+            </div>
+        </div>
+    </div>
 
-        async function fetchIssues() {
-            try {
-                const response = await fetch(GITHUB_API_URL);
-                if (!response.ok) throw new Error('ดึงข้อมูลไม่สำเร็จ');
-                
-                const issues = await response.json();
-                const listElement = document.getElementById('issues-list');
-                const loadingElement = document.getElementById('loading');
+    <div class="card" id="main-card">
+        <div id="setup-screen">
+            <h1 style="margin:0 0 20px 0;">MBTI 80 Questions</h1>
+            <div id="history-box" class="hidden" style="background:#fff3f0; padding:20px; border-radius:20px; margin-bottom:20px; border:1px solid var(--primary-orange);">
+                <small>ประวัติของคุณ:</small>
+                <div id="last-result-text" style="font-size:30px; font-weight:800; color:var(--dark);"></div>
+            </div>
+            <p>คุณเคยทำแบบทดสอบ MBTI หรือยัง?</p>
+            <button class="btn btn-green" onclick="simulateLoading(false)">ยังไม่เคยทำ / เริ่มใหม่</button>
+            <button class="btn" style="background:#eee;" onclick="document.getElementById('history-select').classList.toggle('hidden')">เคยทำแล้ว</button>
+            
+            <div id="history-select" class="hidden" style="margin-top:15px;">
+                <select id="old-val" style="width:100%; padding:10px; border-radius:10px;">
+                    <option value="INTJ">INTJ</option><option value="INTP">INTP</option><option value="ENTJ">ENTJ</option><option value="ENTP">ENTP</option>
+                    <option value="INFJ">INFJ</option><option value="INFP">INFP</option><option value="ENFJ">ENFJ</option><option value="ENFP">ENFP</option>
+                    <option value="ISTJ">ISTJ</option><option value="ISFJ">ISFJ</option><option value="ESTJ">ESTJ</option><option value="ESFJ">ESFJ</option>
+                    <option value="ISTP">ISTP</option><option value="ISFP">ISFP</option><option value="ESTP">ESTP</option><option value="ESFP">ESFP</option>
+                </select>
+                <button class="btn btn-green" onclick="simulateLoading(true)">ยืนยันผลเก่าแล้วเริ่มทำ</button>
+            </div>
+        </div>
 
-                loadingElement.style.display = 'none';
+        <div id="test-screen" class="hidden">
+            <div id="questions-container"></div>
+        </div>
 
-                issues.forEach(issue => {
-                    // กรองเฉพาะ Issue จริงๆ (ไม่เอา Pull Requests)
-                    if (!issue.pull_request) {
-                        const li = document.createElement('li');
-                        li.className = 'issue-card';
-                        
-                        // สร้าง Labels HTML
-                        const labelsHtml = issue.labels.map(label => 
-                            `<span class="tag" style="background-color: #${label.color}">${label.name}</span>`
-                        ).join('');
+        <div id="result-screen" class="hidden" style="text-align:center;">
+            <p>บุคลิกภาพของคุณคือ</p>
+            <h1 id="mbti-res" style="font-size:80px; color:var(--primary-orange); margin:10px 0;"></h1>
+            <p id="comp-msg" style="margin-bottom:30px;"></p>
+            <button class="btn btn-green" onclick="location.reload()">ทำใหม่อีกครั้ง</button>
+            <button class="btn" style="background:var(--dark); color:white; margin-top:10px;" onclick="copyAndFeedback()">
+                <span class="material-icons" style="vertical-align:middle; font-size:18px;">content_copy</span> แนะนำหรือติชม
+            </button>
+        </div>
+    </div>
+</div>
 
-                        li.innerHTML = `
-                            <a href="${issue.html_url}" target="_blank" class="issue-title">#${issue.number} - ${issue.title}</a>
-                            <div class="issue-meta">
-                                สถานะ: <strong>${issue.state}</strong> | 
-                                โดย: ${issue.user.login} | 
-                                เมื่อ: ${new Date(issue.created_at).toLocaleDateString('th-TH')}
-                            </div>
-                            <div style="margin-top:10px;">${labelsHtml}</div>
-                        `;
-                        listElement.appendChild(li);
-                    }
-                });
-            } catch (error) {
-                console.error(error);
-                document.getElementById('loading').innerText = 'เกิดข้อผิดพลาดในการโหลดข้อมูล (ตรวจสอบชื่อ User/Repo หรือ Rate Limit)';
-            }
+<script>
+    const questions = [
+        { q: "คุณชอบทำความรู้จักคนใหม่ๆ ในงานสังคม", type: "IE" },
+        { q: "คุณมักจะสังเกตรายละเอียดเล็กๆ ที่คนอื่นมองข้าม", type: "SN" },
+        { q: "คุณตัดสินใจโดยใช้เหตุผลมากกว่าความรู้สึก", type: "TF" },
+        { q: "คุณชอบวางแผนกิจกรรมทุกอย่างไว้ล่วงหน้า", type: "JP" },
+        { q: "คุณรู้สึกเหนื่อยหลังจากต้องอยู่กับคนหมู่มากนานๆ", type: "IE" },
+        { q: "คุณชอบจินตนาการถึงความเป็นไปได้ในอนาคต", type: "SN" },
+        { q: "คุณให้ความสำคัญกับความยุติธรรมมากกว่าความเมตตา", type: "TF" },
+        { q: "คุณชอบปล่อยให้สิ่งต่างๆ เกิดขึ้นเองโดยไม่วางแผน", type: "JP" },
+        { q: "คุณมักจะเป็นคนเริ่มบทสนทนาก่อน", type: "IE" },
+        { q: "คุณเชื่อในประสบการณ์ตรงมากกว่าทฤษฎี", type: "SN" },
+        { q: "คุณมักจะคล้อยตามอารมณ์ของคนรอบข้าง", type: "TF" },
+        { q: "คุณชอบจัดระเบียบสิ่งของและตารางเวลาเสมอ", type: "JP" },
+        { q: "คุณชอบใช้เวลาว่างคนเดียวเงียบๆ", type: "IE" },
+        { q: "คุณมักจะมองหาความหมายที่ซ่อนอยู่เบื้องหลังคำพูด", type: "SN" },
+        { q: "คุณชอบวิเคราะห์สถานการณ์อย่างตรงไปตรงมา", type: "TF" },
+        { q: "คุณมักจะทำงานเสร็จในนาทีสุดท้าย", type: "JP" },
+        { q: "คุณมีเพื่อนสนิทเพียงไม่กี่คนแต่ลึกซึ้ง", type: "IE" },
+        { q: "คุณชอบทำงานที่เกี่ยวกับข้อมูลจริงและตัวเลข", type: "SN" },
+        { q: "คุณยอมขัดใจคนอื่นเพื่อรักษาความถูกต้อง", type: "TF" },
+        { q: "คุณรู้สึกอึดอัดถ้าชีวิตไม่มีระเบียบแบบแผน", type: "JP" },
+        { q: "คุณชอบเป็นจุดสนใจในงานปาร์ตี้", type: "IE" },
+        { q: "คุณมักจะคิดนอกกรอบและลองวิธีใหม่ๆ", type: "SN" },
+        { q: "คุณมักจะใช้ 'หัวใจ' นำทางในการเลือกคู่ครอง", type: "TF" },
+        { q: "คุณชอบเตรียมตัวสำหรับสถานการณ์ฉุกเฉินเสมอ", type: "JP" },
+        { q: "คุณชอบคิดทบทวนเงียบๆ ก่อนจะพูดอะไรออกไป", type: "IE" },
+        { q: "คุณชอบงานที่ต้องลงมือปฏิบัติจริงมากกว่านั่งฟังบรรยาย", type: "SN" },
+        { q: "คุณมักจะมองหาข้อผิดพลาดทางตรรกะในการโต้เถียง", type: "TF" },
+        { q: "คุณชอบเปลี่ยนแผนได้ตลอดเวลาตามสถานการณ์", type: "JP" },
+        { q: "คุณมีพลังงานมากขึ้นเมื่อได้พูดคุยกับคนเก่งๆ", type: "IE" },
+        { q: "คุณชอบอ่านนิยายแนวไซไฟหรือแฟนตาซี", type: "SN" },
+        { q: "คุณให้ความสำคัญกับการรักษาความสัมพันธ์มากกว่าชัยชนะ", type: "TF" },
+        { q: "คุณชอบทำรายการ (Checklist) สิ่งที่ต้องทำในแต่ละวัน", type: "JP" },
+        { q: "คุณชอบทำงานเบื้องหลังมากกว่าออกหน้า", type: "IE" },
+        { q: "คุณสนใจในสิ่งที่เป็นอยู่ตอนนี้มากกว่าสิ่งที่อาจจะเป็น", type: "SN" },
+        { q: "คุณใช้สมองตัดสินใจมากกว่าความรู้สึกส่วนตัว", type: "TF" },
+        { q: "คุณมักจะเก็บของไว้ไม่เป็นที่และหาไม่ค่อยเจอ", type: "JP" },
+        { q: "คุณชอบเล่าเรื่องราวต่างๆ ให้คนอื่นฟังอย่างสนุกสนาน", type: "IE" },
+        { q: "คุณมักจะฝันกลางวันถึงเรื่องต่างๆ", type: "SN" },
+        { q: "คุณแคร์ความรู้สึกคนอื่นมากจนบางครั้งลำบากใจเอง", type: "TF" },
+        { q: "คุณชอบความชัดเจนและไม่ชอบความไม่แน่นอน", type: "JP" },
+        { q: "คุณชอบไปสถานที่ใหม่ๆ ที่มีคนพลุกพล่าน", type: "IE" },
+        { q: "คุณมักจะสงสัยว่า 'ทำไม' สิ่งต่างๆ ถึงเป็นแบบนั้น", type: "SN" },
+        { q: "คุณเป็นคนใจแข็งเมื่อต้องไล่คนออกหรือลงโทษใคร", type: "TF" },
+        { q: "คุณมักจะไปถึงจุดหมายก่อนเวลานัดเสมอ", type: "JP" },
+        { q: "คุณชอบการแชทคุยมากกว่าการโทรศัพท์", type: "IE" },
+        { q: "คุณชอบทำตามสูตรหรือขั้นตอนที่กำหนดไว้แล้ว", type: "SN" },
+        { q: "คุณมักจะเป็นที่ปรึกษาปัญหาหัวใจให้เพื่อนๆ", type: "TF" },
+        { q: "คุณชอบเปิดโอกาสให้ตัวเองเลือกได้จนนาทีสุดท้าย", type: "JP" },
+        { q: "คุณชอบการทำงานเป็นทีมมากกว่าทำคนเดียว", type: "IE" },
+        { q: "คุณมักจะมองเห็นภาพรวมก่อนรายละเอียด", type: "SN" },
+        { q: "คุณชอบการถกเถียงด้วยข้อมูลและสถิติ", type: "TF" },
+        { q: "คุณมักจะทำความสะอาดบ้านทันทีที่มันเริ่มรก", type: "JP" },
+        { q: "คุณชอบปิดโทรศัพท์เพื่อหนีความวุ่นวาย", type: "IE" },
+        { q: "คุณสนใจเรื่องจิตวิทยาและแรงจูงใจของมนุษย์", type: "SN" },
+        { q: "คุณมักจะหลีกเลี่ยงความขัดแย้งทุกรูปแบบ", type: "TF" },
+        { q: "คุณชอบทำงานตามอารมณ์มากกว่าตามตาราง", type: "JP" },
+        { q: "คุณสามารถพูดคุยกับคนแปลกหน้าได้นานๆ โดยไม่เกร็ง", type: "IE" },
+        { q: "คุณชอบการเรียนรู้ผ่านการทดลองทำจริง", type: "SN" },
+        { q: "คุณให้ค่ากับความซื่อสัตย์มากกว่าความสุภาพ", type: "TF" },
+        { q: "คุณชอบตัดสินใจให้จบๆ ไปมากกว่าค้างคาไว้", type: "JP" },
+        { q: "คุณมักจะรอให้คนอื่นเข้ามาทักก่อน", type: "IE" },
+        { q: "คุณชอบมองหาสัญลักษณ์หรือความหมายเชิงปรัชญา", type: "SN" },
+        { q: "คุณเห็นอกเห็นใจผู้อื่นได้ง่ายแม้ไม่รู้จักกัน", type: "TF" },
+        { q: "คุณมักจะมีโต๊ะทำงานที่ดูวุ่นวายแต่คุณหาของเจอ", type: "JP" },
+        { q: "คุณชอบกิจกรรมกลางแจ้งที่ได้เจอผู้คน", type: "IE" },
+        { q: "คุณชอบความจริงที่พิสูจน์ได้ด้วยประสาทสัมผัสทั้งห้า", type: "SN" },
+        { q: "คุณคิดว่ากฎระเบียบควรปรับใช้ตามความเหมาะสมของบุคคล", type: "TF" },
+        { q: "คุณชอบความรู้สึกที่มีเป้าหมายชัดเจนในแต่ละวัน", type: "JP" },
+        { q: "คุณคิดว่าการเขียนไดอารี่เป็นเรื่องที่น่าสนใจ", type: "IE" },
+        { q: "คุณมักจะตั้งคำถามกับวิธีการทำงานแบบเดิมๆ", type: "SN" },
+        { q: "คุณวิจารณ์ผลงานเพื่อนอย่างตรงไปตรงมาเพื่อหวังดี", type: "TF" },
+        { q: "คุณไม่ชอบการผูกมัดด้วยตารางเวลาที่เคร่งครัด", type: "JP" },
+        { q: "คุณรู้สึกตื่นเต้นเมื่อได้ไปงานสังคมใหญ่ๆ", type: "IE" },
+        { q: "คุณให้ความสำคัญกับปัจจุบันมากกว่าความฝัน", type: "SN" },
+        { q: "คุณมักจะปลอบใจคนเก่งกว่าแก้ปัญหาให้เขา", type: "TF" },
+        { q: "คุณชอบเตรียมเสื้อผ้าที่จะใส่ไว้ตั้งแต่วันก่อน", type: "JP" },
+        { q: "คุณชอบฟังมากกว่าพูด", type: "IE" },
+        { q: "คุณมักจะสังเกตรูปแบบ (Patterns) ของเหตุการณ์ต่างๆ", type: "SN" },
+        { q: "คุณเชื่อว่าความจริงสำคัญที่สุดแม้จะทำให้ใครเสียใจ", type: "TF" },
+        { q: "คุณชอบความตื่นเต้นของการไม่ต้องวางแผนล่วงหน้า", type: "JP" }
+    ];
+
+    let oldMbti = "";
+    let currentMbti = "";
+
+    window.onload = () => {
+        const saved = localStorage.getItem('mbti_local');
+        if(saved) {
+            document.getElementById('history-box').classList.remove('hidden');
+            document.getElementById('last-result-text').innerText = saved;
         }
+    }
 
-        fetchIssues();
-    </script>
+    function toggleSidebar() {
+        const sb = document.getElementById('status-sidebar');
+        sb.classList.toggle('collapsed');
+        document.getElementById('toggle-icon').innerText = sb.classList.contains('collapsed') ? 'assessment' : 'close';
+    }
+
+    // ฟังก์ชันจำลองการโหลด (Top Bar + Skeleton)
+    function simulateLoading(hasOld) {
+        if(hasOld) oldMbti = document.getElementById('old-val').value;
+        
+        const loader = document.getElementById('top-loader');
+        const mainCard = document.getElementById('main-card');
+        const loadingScreen = document.getElementById('loading-screen');
+        
+        // เริ่มวิ่งเส้นข้างบน
+        loader.style.width = "40%";
+        mainCard.classList.add('hidden');
+        loadingScreen.classList.remove('hidden');
+
+        setTimeout(() => {
+            loader.style.width = "100%";
+            setTimeout(() => {
+                loader.style.width = "0%"; // รีเซ็ต
+                loadingScreen.classList.add('hidden');
+                mainCard.classList.remove('hidden');
+                startTest();
+            }, 400);
+        }, 800);
+    }
+
+    function startTest() {
+        document.getElementById('setup-screen').classList.add('hidden');
+        document.getElementById('test-screen').classList.remove('hidden');
+        document.getElementById('status-sidebar').classList.remove('hidden');
+        renderUI();
+    }
+
+    function renderUI() {
+        const qContainer = document.getElementById('questions-container');
+        const gContainer = document.getElementById('status-grid');
+        questions.forEach((q, i) => {
+            qContainer.innerHTML += `
+                <div class="question-block fade-in" id="q-block-${i}">
+                    <p><strong>${i+1}. ${q.q}</strong></p>
+                    <div class="options">
+                        <small style="color:var(--primary-orange)">ไม่เห็นด้วย</small>
+                        <input type="radio" name="q${i}" value="-3" class="radio-circle size-3" onclick="mark(${i})">
+                        <input type="radio" name="q${i}" value="-2" class="radio-circle size-2" onclick="mark(${i})">
+                        <input type="radio" name="q${i}" value="-1" class="radio-circle size-1" onclick="mark(${i})">
+                        <input type="radio" name="q${i}" value="0" class="radio-circle size-0" onclick="mark(${i})">
+                        <input type="radio" name="q${i}" value="1" class="radio-circle size-1" onclick="mark(${i})">
+                        <input type="radio" name="q${i}" value="2" class="radio-circle size-2" onclick="mark(${i})">
+                        <input type="radio" name="q${i}" value="3" class="radio-circle size-3" onclick="mark(${i})">
+                        <small style="color:var(--primary-green)">เห็นด้วย</small>
+                    </div>
+                </div>`;
+            gContainer.innerHTML += `<div class="dot" id="dot-${i}" onclick="jump(${i})">${i+1}</div>`;
+        });
+    }
+
+    function mark(i) {
+        document.getElementById(`dot-${i}`).classList.add('active');
+        document.getElementById(`dot-${i}`).classList.remove('missing');
+    }
+
+    function jump(i) {
+        if(document.getElementById('status-sidebar').classList.contains('collapsed')) toggleSidebar();
+        document.getElementById(`q-block-${i}`).scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    function checkSubmit() {
+        let missing = [];
+        questions.forEach((_, i) => {
+            if(!document.querySelector(`input[name="q${i}"]:checked`)) missing.push(i+1);
+        });
+
+        if(missing.length > 0) {
+            missing.forEach(n => document.getElementById(`dot-${n-1}`).classList.add('missing'));
+            if(confirm(`ยังเหลืออีก ${missing.length} ข้อที่ยังไม่ได้ตอบ จะส่งเลยมั้ยเพื่อน?`)) calc();
+        } else {
+            calc();
+        }
+    }
+
+    function calc() {
+        // อนิเมชั่นตอนส่งผล
+        const loader = document.getElementById('top-loader');
+        loader.style.width = "100%";
+         
+        setTimeout(() => {
+            let s = { IE: 0, SN: 0, TF: 0, JP: 0 };
+            questions.forEach((q, i) => {
+                const el = document.querySelector(`input[name="q${i}"]:checked`);
+                if(el) s[q.type] += parseInt(el.value);
+            });
+
+            currentMbti = (s.IE<0?"I":"E")+(s.SN<0?"S":"N")+(s.TF<0?"T":"F")+(s.JP<0?"J":"P");
+            localStorage.setItem('mbti_local', currentMbti);
+
+            document.getElementById('test-screen').classList.add('hidden');
+            document.getElementById('status-sidebar').classList.add('hidden');
+            document.getElementById('result-screen').classList.remove('hidden');
+            document.getElementById('mbti-res').innerText = currentMbti;
+            
+            if(oldMbti) {
+                document.getElementById('comp-msg').innerText = (oldMbti === currentMbti) ? "ผลยังเหมือนเดิมเลย!" : `เปลี่ยนจาก ${oldMbti} เป็น ${currentMbti}`;
+            }
+            loader.style.width = "0%";
+            window.scrollTo(0,0);
+        }, 600);
+    }
+
+    async function copyAndFeedback() {
+        const txt = `ผล MBTI ของฉันคือ: ${currentMbti}`;
+        await navigator.clipboard.writeText(txt);
+        alert("ก๊อปปี้ผลลัพธ์แล้ว! กำลังไปหน้า Feedback...");
+        window.open("https://github.com/Adil-i07/All-trial-data/issues/1#issue-4000906721", "_blank");
+    }
+</script>
 </body>
 </html>
